@@ -1,0 +1,79 @@
+WITH
+     (SELECT count(*) AS count
+      FROM
+        (SELECT *
+         FROM
+           (SELECT app_sequence as sequence,
+                   argMin(toDateTime(creation_date), sequence) AS creation_date,
+                   sale_channel_id_new.name sale_channel,
+                   max(credit_amount) as credit_amount
+            FROM rkk_db.ikr_ipoteka
+            WHERE (credit_target_id.name like '%Жилищные вторичный рынок%'
+                   or credit_target_id.name like '%Ипотечные ссуды%'
+                   or credit_target_id.name like '%Жилищные новостройка%')
+            GROUP BY sequence,
+                     sale_channel
+            UNION ALL SELECT toString(app_sequence) AS sequence,
+                             argMin(toDateTime(creation_date), sequence) AS creation_date,
+                             sale_channel_id_new.Name sale_channel,
+                             max(credit_amount) as credit_amount
+            FROM rkk_db.rkk_ipoteka
+            WHERE credit_target_id.Direction IN ('Ипотечный кредит')
+            GROUP BY sequence,
+            sale_channel)
+         WHERE creation_date >= toStartOfDay(now()) - interval 7 DAY) AS virtual_table
+      WHERE ((creation_date >= toStartOfDay(now())))) AS t1,
+
+     (SELECT count(*) AS count
+      FROM
+        (SELECT *
+         FROM
+         (SELECT app_sequence as sequence,
+                   argMin(toDateTime(creation_date), sequence) AS creation_date,
+                   sale_channel_id_new.name sale_channel,
+                   max(credit_amount) as credit_amount
+            FROM rkk_db.ikr_ipoteka
+            WHERE (credit_target_id.name like '%Жилищные вторичный рынок%'
+                   or credit_target_id.name like '%Ипотечные ссуды%'
+                   or credit_target_id.name like '%Жилищные новостройка%')
+            GROUP BY sequence,
+                     sale_channel
+                      UNION ALL SELECT toString(app_sequence) AS sequence,
+                             argMin(toDateTime(creation_date), sequence) AS creation_date,
+                             sale_channel_id_new.Name sale_channel,
+                             max(credit_amount) as credit_amount
+            FROM rkk_db.rkk_ipoteka
+            WHERE credit_target_id.Direction IN ('Ипотечный кредит')
+            GROUP BY sequence,
+                     sale_channel)
+                     WHERE creation_date >= toStartOfDay(now()) - interval 7 DAY) AS virtual_table
+      WHERE ((creation_date >= toStartOfDay(now()) - interval 1 day
+              and creation_date < now()- interval 1 day)) ) AS t2 ,
+              
+      (SELECT count(*) AS count
+      FROM
+  (SELECT *
+   FROM
+     (SELECT app_sequence as sequence,
+             argMin(toDateTime(creation_date), sequence) AS creation_date,
+             sale_channel_id_new.name sale_channel,
+             max(credit_amount) as credit_amount
+      FROM rkk_db.ikr_ipoteka
+       WHERE (credit_target_id.name like '%Жилищные вторичный рынок%'
+             or credit_target_id.name like '%Ипотечные ссуды%'
+             or credit_target_id.name like '%Жилищные новостройка%')
+      GROUP BY sequence,
+               sale_channel
+      UNION ALL SELECT toString(app_sequence) AS sequence,
+                       argMin(toDateTime(creation_date), sequence) AS creation_date,
+                       sale_channel_id_new.Name sale_channel,
+                       max(credit_amount) as credit_amount
+                        FROM rkk_db.rkk_ipoteka
+      WHERE credit_target_id.Direction IN ('Ипотечный кредит')
+      GROUP BY sequence,
+               sale_channel)
+   WHERE creation_date >= toStartOfDay(now()) - interval 7 DAY) AS virtual_table
+WHERE ((creation_date >= toStartOfDay(now()) - interval 1 day
+        and creation_date < toStartOfDay(now())))) as t3
+              
+              SELECT t3*(t1/t2) as  metric
